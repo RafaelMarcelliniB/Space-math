@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.exe
+*.AppImage
+*.dmg
+.DS_Store
+*.log
+out/
+build/
+release/

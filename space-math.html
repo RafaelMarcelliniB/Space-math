@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Math - Juego de Matemáticas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #game-container {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(180deg, #0a0a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow: hidden;
+        }
+
+        #hud {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            font-size: 20px;
+            font-weight: bold;
+            z-index: 100;
+            color: #ffd54a;
+            text-shadow: 0 0 10px rgba(255, 213, 74, 0.6);
+        }
+
+        .score { margin-right: 0; }
+
+        #current-problem {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            color: #ffd54a;
+            text-shadow: 0 0 20px rgba(255, 213, 74, 0.8);
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px 40px;
+            border-radius: 12px;
+            border: 3px solid #ffd54a;
+            font-weight: bold;
+        }
+
+        .answer-option {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            cursor: pointer;
+            user-select: none;
+            animation: fallDown 4s linear forwards;
+        }
+
+        .answer-option:hover {
+            transform: scale(1.1);
+        }
+
+        @keyframes fallDown {
+            from {
+                top: -60px;
+                opacity: 1;
+            }
+            to {
+                top: 100vh;
+                opacity: 0.7;
+            }
+        }
+
+        .player {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 50px;
+            background: linear-gradient(180deg, #ffd54a, #ffb300);
+            clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 213, 74, 0.8);
+        }
+
+        .projectile {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            border-radius: 4px;
+        }
+
+        .projectile.active {
+            animation: shootUp 400ms linear forwards;
+        }
+
+        @keyframes shootUp {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateY(-500px); }
+        }
+
+        #input-area {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+        }
+
+        #answer-buttons {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90vw;
+            display: none;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px;
+            border-radius: 16px;
+            border: 3px solid #ffd54a;
+            text-align: center;
+            display: none;
+            z-index: 200;
+        }
+
+        .game-over.show {
+            display: block;
+            animation: popIn 300ms ease;
+        }
+
+        @keyframes popIn {
+            from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .game-over h1 {
+            color: #ff6b6b;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .game-over p {
+            color: #ffd54a;
+            font-size: 24px;
+            margin: 10px 0;
+        }
+
+        .game-over button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background: #ffd54a;
+            color: #000;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .game-over button:hover {
+            background: #ffb300;
+        }
+
+        .menu-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ffd54a;
+            color: #000;
+            border: 0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .menu-btn:hover {
+            background: #ffb300;
+        }
+
+        /* Estilos de la pantalla de carga */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, #0a0a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: #ffd54a;
+        }
+
+        .loading-container {
+            text-align: center;
+        }
+
+        .loading-title {
+            font-size: 48px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px rgba(255, 213, 74, 0.8);
+            font-weight: bold;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 40px;
+            border: 4px solid rgba(255, 213, 74, 0.2);
+            border-top: 4px solid #ffd54a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 213, 74, 0.6);
+        }
+
+        #loading-screen.hidden {
+            display: none;
+        }
+
+        /* Pantalla del menú principal del juego */
+        #menu-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, #0a0a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 8888;
+            color: #ffd54a;
+        }
+
+        .menu-content {
+            text-align: center;
+        }
+
+        .menu-title {
+            font-size: 72px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(255, 213, 74, 0.9);
+            font-weight: bold;
+            letter-spacing: 3px;
+        }
+
+        .menu-subtitle {
+            font-size: 24px;
+            margin-bottom: 60px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 213, 74, 0.6);
+        }
+
+        .menu-button {
+            padding: 18px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(180deg, #ffd54a, #ffb300);
+            color: #000;
+            border: 3px solid #ffb300;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(255, 213, 74, 0.6);
+            transition: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .menu-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 50px rgba(255, 213, 74, 0.9);
+        }
+
+        .menu-button:active {
+            transform: scale(0.95);
+        }
+
+        #menu-screen.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla del menú principal -->
+    <div id="menu-screen">
+        <div class="menu-content">
+            <div class="menu-title">🚀 SPACE MATH</div>
+            <div class="menu-subtitle">¡Resuelve operaciones y derrota enemigos!</div>
+            <button class="menu-button" onclick="startGame()">Jugar</button>
+        </div>
+    </div>
+
+    <!-- Botón para volver al menú principal -->
+    <button class="menu-btn" onclick="window.location.href='menu.html'">← Menú</button>
+    
+    <!-- Contenedor principal del juego -->
+    <div id="game-container">
+        <!-- HUD con información del juego (puntuación, vidas, etc) -->
+        <div id="hud">
+            <div class="score">Puntuación: <span id="score-val">0</span></div>
+            <div>Vidas: <span id="lives-val">3</span></div>
+            <div>🪙 <span id="coins-val">0</span></div>
+            <div>Tiempo: <span id="time-val">60</span>s</div>
+        </div>
+        
+        <!-- Muestra el problema matemático actual -->
+        <div id="current-problem">3 + 5</div>
+
+        <!-- La nave del jugador -->
+        <div class="player" id="player"></div>
+    </div>
+    
+    <!-- Pantalla de fin de juego -->
+    <div class="game-over" id="game-over">
+        <h1>GAME OVER</h1>
+        <p>Puntuación Final: <span id="final-score">0</span></p>
+        <p>Monedas: <span id="final-coins">0</span></p>
+        <button onclick="location.reload()">Jugar de Nuevo</button>
+        <button onclick="showLevelSelectorFromGameOver()">Seleccionar Nivel</button>
+    </div>
+
+    <!-- Selector de niveles para el juego -->
+    <div id="level-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:300; align-items:center; justify-content:center;">
+        <div style="max-width:960px; width:95%; margin:0 auto; color:#fff;">
+            <h2 style="text-align:center; color:#ffd54a; margin-bottom:12px;">Selecciona Nivel (Primaria)</h2>
+            <div id="levels-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px;"></div>
+            <div style="text-align:center; margin-top:14px;">
+                <button id="close-levels" style="padding:10px 18px; border-radius:8px; background:#ffd54a; border:0; cursor:pointer;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Obtenemos los elementos del DOM que vamos a usar
+        const gameContainer = document.getElementById('game-container');
+        const playerEl = document.getElementById('player');
+        const problemDisplay = document.getElementById('current-problem');
+        const scoreVal = document.getElementById('score-val');
+        const livesVal = document.getElementById('lives-val');
+        const coinsVal = document.getElementById('coins-val');
+        const gameOverScreen = document.getElementById('game-over');
+
+        // Variables principales del juego
+        let score = 0;              // Puntuación actual
+        let lives = 3;              // Vidas restantes
+        // Cargamos las monedas guardadas o iniciamos en 0
+        let coins = localStorage.getItem('coins') ? parseInt(localStorage.getItem('coins')) : 0;
+        let gameRunning = true;     // Flag para saber si el juego está activo
+
+        // Configuración del tiempo y velocidad
+        const totalTime = 60;           // Tiempo total en segundos
+        let timeLeft = totalTime;       // Tiempo restante
+        const baseFallDuration = 4;     // Tiempo que tarda una respuesta en caer (en segundos)
+        const basePlayerSpeed = 12;     // Velocidad base de la nave
+        const maxExtraSpeedFactor = 1.5; // Multiplicador de velocidad que aumenta con el tiempo
+        let timerInterval = null;       // Variable para el intervalo del temporizador
+
+        // Estado del jugador
+        let playerX = gameContainer.offsetWidth / 2 - 20;  // Posición X de la nave
+        let playerSpeed = 5;            // Velocidad de movimiento actual
+        const keys = {};                // Objeto para rastrear qué teclas están presionadas
+
+        // Almacenamientos de objetos del juego
+        const answerOptions = [];       // Array con las opciones de respuesta
+        const projectiles = [];         // Array con los proyectiles disparados
+
+        // Operaciones disponibles
+        const operations = ['+', '-', '*'];  // Suma, resta y multiplicación
+        let nextOptionId = 0;           // ID único para cada opción
+        let currentProblem = null;      // Problema matemático actual
+        
+        // Definición de los niveles del juego
+        const levels = [
+            { id:1, name:'1º Primaria', cost:0, ops:['+'], maxNum:10, combine:false },
+            { id:2, name:'2º Primaria', cost:5, ops:['+','-'], maxNum:20, combine:false },
+            { id:3, name:'3º Primaria', cost:10, ops:['+','-','*'], maxNum:10, combine:false },
+            { id:4, name:'4º Primaria', cost:20, ops:['+','-','*'], maxNum:20, combine:true },
+            { id:5, name:'5º Primaria', cost:30, ops:['+','-','*'], maxNum:50, combine:true }
+        ];
+
+        // Cargamos los niveles desbloqueados del almacenamiento local
+        let unlockedLevels = JSON.parse(localStorage.getItem('unlockedLevels') || '[]');
+        // Si no hay niveles desbloqueados, desbloqueamos el primero por defecto
+        if (!unlockedLevels || unlockedLevels.length === 0) unlockedLevels = [1];
+        let selectedLevelId = null;  // Nivel seleccionado actualmente
+
+        // Función que genera un problema matemático aleatorio
+        function generateProblem() {
+            // Obtenemos la configuración del nivel seleccionado
+            const lvl = levels.find(l => l.id === selectedLevelId) || levels[0];
+            const opsPool = lvl.ops;      // Operaciones disponibles para este nivel
+            const maxN = lvl.maxNum;      // Número máximo para los operandos
+
+            if (lvl.combine) {
+                // Creamos una expresión con tres números y dos operaciones (ej: a + b * c)
+                const a = Math.floor(Math.random() * maxN) + 1;
+                const b = Math.floor(Math.random() * maxN) + 1;
+                const c = Math.floor(Math.random() * maxN) + 1;
+                const op1 = opsPool[Math.floor(Math.random() * opsPool.length)];
+                const op2 = opsPool[Math.floor(Math.random() * opsPool.length)];
+                const expr = `${a} ${op1} ${b} ${op2} ${c}`;
+                let ans;
+                // Calculamos el resultado usando eval (cuidado con esto en producción)
+                try { ans = Math.floor(eval(expr)); } catch(e) { ans = a + b + c; }
+                return { expression: expr, answer: ans };
+            } else {
+                // Operación simple con dos números
+                const num1 = Math.floor(Math.random() * maxN) + 1;
+                const num2 = Math.floor(Math.random() * maxN) + 1;
+                const op = opsPool[Math.floor(Math.random() * opsPool.length)];
+                let result;
+                // Calculamos el resultado según la operación
+                if (op === '+') result = num1 + num2;
+                else if (op === '-') result = num1 - num2;
+                else result = num1 * num2;
+                return { expression: `${num1} ${op} ${num2}`, answer: result };
+            }
+        }
+
+        // Calcula el multiplicador de velocidad según el tiempo transcurrido
+        function getSpeedMultiplier() {
+            const elapsed = totalTime - timeLeft;  // Tiempo transcurrido
+            const frac = Math.max(0, Math.min(1, elapsed / totalTime));
+            // El multiplicador crece de 1 a 1+maxExtraSpeedFactor
+            return 1 + frac * maxExtraSpeedFactor;
+        }
+
+        // Actualiza la velocidad de las animaciones de caída
+        function updateAnimationSpeeds() {
+            const mul = getSpeedMultiplier();
+            // Ajustamos la duración de la animación de caída para cada opción
+            answerOptions.forEach(opt => {
+                if (opt && opt.el) {
+                    opt.el.style.animationDuration = (baseFallDuration / mul) + 's';
+                }
+            });
+        }
+
+        // Guarda los niveles desbloqueados en el almacenamiento local
+        function saveUnlockedLevels() {
+            localStorage.setItem('unlockedLevels', JSON.stringify(unlockedLevels));
+        }
+
+        function renderLevelSelector() {
+            const grid = document.getElementById('levels-grid');
+            grid.innerHTML = '';
+            levels.forEach(l => {
+                const isUnlocked = unlockedLevels.includes(l.id);
+                const card = document.createElement('div');
+                card.style.background = isUnlocked ? 'linear-gradient(180deg,#0b2540,#123456)' : 'linear-gradient(180deg,#222,#111)';
+                card.style.border = '2px solid #ffd54a';
+                card.style.padding = '12px';
+                card.style.borderRadius = '10px';
+                card.style.textAlign = 'center';
+                card.style.minHeight = '110px';
+
+                const title = document.createElement('div');
+                title.textContent = l.name;
+                title.style.fontWeight = '700';
+                title.style.marginBottom = '8px';
+                title.style.color = '#ffd54a';
+                card.appendChild(title);
+
+                const details = document.createElement('div');
+                details.style.color = '#fff';
+                details.style.fontSize = '14px';
+                details.innerHTML = `Ops: ${l.ops.join(' ')}<br>Max: ${l.maxNum}`;
+                card.appendChild(details);
+
+                const btn = document.createElement('button');
+                btn.style.marginTop = '10px';
+                btn.style.padding = '8px 12px';
+                btn.style.borderRadius = '8px';
+                btn.style.border = '0';
+                if (isUnlocked) {
+                    btn.textContent = 'Seleccionar';
+                    btn.style.background = '#4CAF50';
+                    btn.onclick = () => { selectLevel(l.id); document.getElementById('level-overlay').style.display='none'; };
+                } else {
+                    btn.textContent = `Desbloquear (${l.cost} 🪙)`;
+                    btn.style.background = '#ff6b6b';
+                    btn.onclick = () => { unlockLevel(l.id); };
+                }
+                card.appendChild(btn);
+
+                if (!isUnlocked) {
+                    const lock = document.createElement('div');
+                    lock.textContent = 'Bloqueado';
+                    lock.style.color = '#f0c419';
+                    lock.style.marginTop = '8px';
+                    card.appendChild(lock);
+                }
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Desbloquea un nivel si tienes suficientes monedas
+        function unlockLevel(id) {
+            const lvl = levels.find(x=>x.id===id);
+            if (!lvl) return;
+            
+            // Verificamos si tenemos suficientes monedas
+            if (coins >= lvl.cost) {
+                coins -= lvl.cost;  // Restamos el costo
+                localStorage.setItem('coins', coins);  // Guardamos los cambios
+                unlockedLevels.push(id);  // Añadimos el nivel a los desbloqueados
+                saveUnlockedLevels();  // Guardamos la lista de desbloqueados
+                updateUI();  // Actualizamos la interfaz
+                renderLevelSelector();  // Redibujaos el selector
+            } else {
+                alert('No tienes suficientes monedas para desbloquear este nivel.');
+            }
+        }
+
+        // Selecciona un nivel y comienza el juego
+        function selectLevel(id) {
+            // Verificamos que el nivel esté desbloqueado
+            if (!unlockedLevels.includes(id)) {
+                alert('Nivel bloqueado. Desbloquéalo primero.');
+                return;
+            }
+            
+            selectedLevelId = id;  // Guardamos el nivel seleccionado
+            localStorage.setItem('selectedLevelId', id);  // Lo persistimos
+            createAnswerOptions();  // Creamos nuevas opciones
+            updateUI();  // Actualizamos la interfaz
+            startGameAfterSelection();  // Iniciamos el juego
+        }
+
+        // Comienza el juego después de seleccionar un nivel
+        function startGameAfterSelection() {
+            // Limpiamos cualquier intervalo anterior
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            
+            timeLeft = totalTime;  // Reseteamos el tiempo
+            updateAnimationSpeeds();  // Actualizamos las velocidades
+            
+            // Creamos un intervalo que decrementa el tiempo cada segundo
+            timerInterval = setInterval(() => {
+                timeLeft = Math.max(0, timeLeft - 1);
+                updateUI();  // Actualizamos la interfaz
+                updateAnimationSpeeds();  // Ajustamos velocidades según el tiempo
+                
+                // Si se acaba el tiempo, terminamos el juego
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+            
+            gameRunning = true;  // Marcamos que el juego está corriendo
+            gameLoop();  // Iniciamos el bucle principal
+        }
+
+        // Crea nuevas opciones de respuesta
+        function createAnswerOptions() {
+            spawnOptions();
+        }
+
+        // Genera nuevas opciones de respuesta que caen desde arriba
+        function spawnOptions() {
+            // Borramos las opciones antiguas
+            answerOptions.forEach(opt => opt.el.remove());
+            answerOptions.length = 0;
+
+            // Generamos un nuevo problema matemático
+            currentProblem = generateProblem();
+            problemDisplay.textContent = currentProblem.expression;  // Lo mostramos en pantalla
+
+            const correctAnswer = currentProblem.answer;
+            const wrongAnswers = new Set();
+
+            // Generamos 3 respuestas incorrectas
+            while (wrongAnswers.size < 3) {
+                const wrong = correctAnswer + Math.floor((Math.random() - 0.5) * 20);
+                if (wrong !== correctAnswer && !wrongAnswers.has(wrong)) {
+                    wrongAnswers.add(wrong);
+                }
+            }
+
+            // Combinamos respuesta correcta e incorrectas
+            const allAnswers = [correctAnswer, ...Array.from(wrongAnswers)];
+            
+            // Barajamos las respuestas para que no siempre esté en el mismo lugar
+            for (let i = allAnswers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allAnswers[i], allAnswers[j]] = [allAnswers[j], allAnswers[i]];
+            }
+
+            // Posiciones donde caerán las opciones
+            const positions = [
+                { x: gameContainer.offsetWidth * 0.15 },
+                { x: gameContainer.offsetWidth * 0.35 },
+                { x: gameContainer.offsetWidth * 0.65 },
+                { x: gameContainer.offsetWidth * 0.85 }
+            ];
+
+            // Creamos elementos visuales para cada respuesta
+            allAnswers.forEach((answer, idx) => {
+                const pos = positions[idx];
+                const optEl = document.createElement('div');
+                optEl.className = 'answer-option';
+                optEl.textContent = answer;
+                optEl.style.left = pos.x + 'px';
+                optEl.style.top = '-60px';
+                optEl.id = 'option-' + nextOptionId;
+                const mul = getSpeedMultiplier();
+                optEl.style.animationDelay = (idx * 0.3) + 's';
+                optEl.style.animationDuration = (baseFallDuration / mul) + 's';
+                
+                // Usamos un color neutral para que el jugador no pueda saber cuál es correcta
+                optEl.style.background = 'radial-gradient(circle at 30% 30%, #607D8B, #455A64)';
+                optEl.style.boxShadow = '0 0 18px rgba(69,90,100,0.6)';
+
+                optEl.style.color = '#fff';
+                gameContainer.appendChild(optEl);
+
+                // Creamos el objeto que representa esta opción
+                const option = {
+                    id: nextOptionId++,
+                    el: optEl,
+                    x: pos.x,
+                    y: 0,
+                    answer: answer,
+                    isCorrect: answer === correctAnswer,
+                    hit: false  // Aún no ha sido tocada
+                };
+
+                answerOptions.push(option);
+            });
+        }
+
+        // Actualiza la posición de la nave del jugador
+        function updatePlayer() {
+            let newX = playerX;
+            // Movemos la nave según las teclas presionadas
+            if (keys['ArrowLeft']) newX -= playerSpeed;
+            if (keys['ArrowRight']) newX += playerSpeed;
+
+            // Nos aseguramos de que la nave no salga de la pantalla
+            newX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - 40));
+            playerX = newX;
+
+            // Actualizamos la posición visual
+            playerEl.style.left = playerX + 'px';
+        }
+
+        // Dispara un proyectil desde la nave
+        function shoot() {
+            const projectile = document.createElement('div');
+            projectile.className = 'projectile';
+            const projX = playerX + 16;  // Posición X desde el centro de la nave
+            const projY = gameContainer.offsetHeight - 70;  // Posición Y cerca de la nave
+            
+            projectile.style.left = projX + 'px';
+            projectile.style.top = projY + 'px';
+            gameContainer.appendChild(projectile);
+
+            // Objeto que representa el proyectil
+            const proj = {
+                el: projectile,
+                x: projX,
+                y: projY,
+                vy: -8  // Velocidad vertical (negativa = hacia arriba)
+            };
+
+            projectiles.push(proj);
+            projectile.classList.add('active');  // Activamos la animación
+
+            // Removemos el proyectil después de 600ms
+            setTimeout(() => {
+                projectile.remove();
+                const idx = projectiles.indexOf(proj);
+                if (idx > -1) projectiles.splice(idx, 1);
+            }, 600);
+        }
+
+        // Actualiza la posición de los proyectiles y detecta colisiones
+        function updateProjectiles() {
+            projectiles.forEach((proj, pIdx) => {
+                proj.y += proj.vy;  // Movemos el proyectil
+                proj.el.style.top = proj.y + 'px';
+
+                // Verificamos colisión con las opciones de respuesta
+                answerOptions.forEach((option) => {
+                    if (!option.hit) {
+                        const rect = option.el.getBoundingClientRect();
+                        const projRect = proj.el.getBoundingClientRect();
+                        
+                        // Detectamos colisión en círculos
+                        const optCenterX = rect.left + rect.width / 2;
+                        const optCenterY = rect.top + rect.height / 2;
+                        const projCenterX = projRect.left + projRect.width / 2;
+                        const projCenterY = projRect.top + projRect.height / 2;
+                        
+                        // Calculamos la distancia entre los centros
+                        const distance = Math.sqrt(
+                            Math.pow(optCenterX - projCenterX, 2) +
+                            Math.pow(optCenterY - projCenterY, 2)
+                        );
+                        
+                        // Si hay colisión...
+                        if (distance < 45) {
+                            option.hit = true;
+                            // Removemos el proyectil
+                            if (pIdx > -1) {
+                                proj.el.remove();
+                                projectiles.splice(pIdx, 1);
+                            }
+                            // Verificamos si la respuesta es correcta
+                            checkAnswer(option);
+                        }
+                    }
+                });
+            });
+
+            // Verificamos si las opciones llegaron al fondo sin ser seleccionadas
+            answerOptions.forEach((option) => {
+                if (!option.hit && !option.missed) {
+                    const rect = option.el.getBoundingClientRect();
+                    if (rect.top > gameContainer.offsetHeight - 80) {
+                        option.missed = true;  // Marcamos como perdida
+                        loseLife();  // Perdemos una vida
+                    }
+                }
+            });
+        }
+
+        // Verifica si la respuesta seleccionada es correcta
+        function checkAnswer(option) {
+            // Marcamos todas las opciones como tocadas para evitar que se cuenten como perdidas
+            answerOptions.forEach(o => { if (o) o.hit = true; });
+
+            if (option.isCorrect) {
+                // ¡La respuesta es correcta!
+                score += 10;  // Sumamos puntos
+                coins += 1;   // Ganamos una moneda
+                localStorage.setItem('coins', coins);  // Guardamos
+                option.el.textContent = '✓';  // Mostramos checkmark
+                // Añadimos un brillo verde
+                option.el.style.boxShadow = '0 0 30px rgba(0, 255, 0, 1)';
+                
+                updateUI();
+                // Generamos nuevas opciones después de un pequeño delay
+                setTimeout(() => {
+                    createAnswerOptions();
+                }, 500);
+            } else {
+                // ¡La respuesta es incorrecta!
+                lives--;  // Perdemos una vida
+                option.el.textContent = '✗';  // Mostramos X
+                // Añadimos un brillo rojo
+                option.el.style.boxShadow = '0 0 30px rgba(255, 0, 0, 1)';
+                
+                updateUI();
+                
+                // Verificamos si el juego terminó
+                if (lives <= 0) {
+                    setTimeout(() => {
+                        endGame();
+                    }, 500);
+                } else {
+                    // Si aún hay vidas, generamos nuevas opciones
+                    setTimeout(() => {
+                        createAnswerOptions();
+                    }, 500);
+                }
+            }
+        }
+
+        // Función para perder una vida (cuando se deja caer una opción)
+        function loseLife() {
+            lives--;  // Decrementamos las vidas
+            updateUI();  // Actualizamos la interfaz
+            
+            // Verificamos si el juego terminó
+            if (lives <= 0) {
+                endGame();
+            } else {
+                // Si aún hay vidas, continuamos el juego
+                createAnswerOptions();
+            }
+        }
+
+        function updateUI() {
+            scoreVal.textContent = score;
+            livesVal.textContent = lives;
+            coinsVal.textContent = coins;
+            const timeEl = document.getElementById('time-val');
+            if (timeEl) timeEl.textContent = timeLeft;
+        }
+
+        function endGame() {
+            gameRunning = false;
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('final-coins').textContent = coins;
+            gameOverScreen.classList.add('show');
+        }
+
+        function gameLoop() {
+            if (gameRunning) {
+                // adjust player speed according to elapsed time
+                const mul = getSpeedMultiplier();
+                playerSpeed = basePlayerSpeed * mul;
+                updatePlayer();
+                updateProjectiles();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (gameRunning) shoot();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function startGame() {
+            const menuScreen = document.getElementById('menu-screen');
+            if (menuScreen) {
+                menuScreen.classList.add('hidden');
+            }
+            renderLevelSelector();
+            document.getElementById('level-overlay').style.display = 'flex';
+        }
+
+        function showLevelSelectorFromGameOver() {
+            gameOverScreen.classList.remove('show');
+            renderLevelSelector();
+            document.getElementById('level-overlay').style.display = 'flex';
+        }
+
+        // Initialize: menu is shown by default, level overlay hidden
+        document.getElementById('level-overlay').style.display = 'none';
+        document.getElementById('close-levels').addEventListener('click', () => { document.getElementById('level-overlay').style.display='none'; });
+    </script>
+</body>
+</html>
