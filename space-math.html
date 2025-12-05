@@ -384,6 +384,8 @@
         const coinsVal = document.getElementById('coins-val');
         const gameOverScreen = document.getElementById('game-over');
 
+        
+
         // Variables principales del juego
         let score = 0;              // Puntuación actual
         let lives = 3;              // Vidas restantes
@@ -403,6 +405,30 @@
         let playerX = gameContainer.offsetWidth / 2 - 20;  // Posición X de la nave
         let playerSpeed = 5;            // Velocidad de movimiento actual
         const keys = {};                // Objeto para rastrear qué teclas están presionadas
+
+        // Mover la nave con el mouse
+        gameContainer.addEventListener('mousemove', (e) => {
+        const rect = gameContainer.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+
+        // centramos la nave respecto al mouse
+        let newX = mouseX - playerEl.offsetWidth / 2;
+
+        // limitamos dentro del contenedor (mismo ancho que usas en updatePlayer: 40px)
+        newX = Math.max(0, Math.min(newX, gameContainer.offsetWidth - 40));
+
+        playerX = newX;
+        playerEl.style.left = playerX + 'px';
+        });
+
+        // Disparar con click dentro del juego
+        gameContainer.addEventListener('click', (e) => {
+        if (!gameRunning) return;
+        // solo botón izquierdo
+        if (e.button === 0) {
+            shoot();
+        }
+        });
 
         // Almacenamientos de objetos del juego
         const answerOptions = [];       // Array con las opciones de respuesta
